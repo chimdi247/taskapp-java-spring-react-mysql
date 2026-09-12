@@ -75,8 +75,14 @@ public class TasksServiceImpl implements TaskService {
     public Response<Task> getTaskById(Long id) {
         log.info("inside getTaskById()");
 
+        User currentUser = userService.getCurrentLoggedInUser();
+
         Task task = taskRepository.findById(id)
                 .orElseThrow(()-> new NotFoundException("Tasks not found"));
+
+        if (!task.getUser().getId().equals(currentUser.getId())) {
+            throw new NotFoundException("Tasks not found");
+        }
 
         return Response.<Task>builder()
                 .statusCode(HttpStatus.OK.value())
@@ -89,8 +95,14 @@ public class TasksServiceImpl implements TaskService {
     public Response<Task> updateTask(TaskRequest taskRequest) {
         log.info("inside updateTask()");
 
+        User currentUser = userService.getCurrentLoggedInUser();
+
         Task task = taskRepository.findById(taskRequest.getId())
                 .orElseThrow(()-> new NotFoundException("Tasks not found"));
+
+        if (!task.getUser().getId().equals(currentUser.getId())) {
+            throw new NotFoundException("Tasks not found");
+        }
 
         if (taskRequest.getTitle() != null) task.setTitle(taskRequest.getTitle());
         if (taskRequest.getDescription() != null) task.setDescription(taskRequest.getDescription());
@@ -115,9 +127,16 @@ public class TasksServiceImpl implements TaskService {
     @Override
     public Response<Void> deleteTask(Long id) {
        log.info("inside delete task");
-       if (!taskRepository.existsById(id)){
+
+       User currentUser = userService.getCurrentLoggedInUser();
+
+       Task task = taskRepository.findById(id)
+               .orElseThrow(()-> new NotFoundException("Task does not exists"));
+
+       if (!task.getUser().getId().equals(currentUser.getId())) {
            throw new NotFoundException("Task does not exists");
        }
+
        taskRepository.deleteById(id);
 
        return Response.<Void>builder()

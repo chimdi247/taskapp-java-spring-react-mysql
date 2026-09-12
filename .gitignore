@@ -1,6 +1,10 @@
 # Compiled class file
 *.class
 
+# Maven build output (was previously untracked-but-present, carrying a
+# stale copy of application.properties with real credentials in it)
+target/
+
 # Log file
 *.log
 frontend/node_modules

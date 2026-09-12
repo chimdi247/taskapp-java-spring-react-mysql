@@ -1,83 +1,68 @@
-version: "3.9"
+name: taskapp
+
+# -----------------------------------------------------------------------------
+# One-file deployment: MySQL, the Spring Boot backend, and the React frontend
+# (served + reverse-proxied to the backend by nginx).
+#
+# Usage:
+#   cp .env.example .env   # fill in real values first
+#   docker compose up -d --build
+#
+# See README.docker.md for what was checked/fixed to get here.
+# -----------------------------------------------------------------------------
 
 services:
 
   mysql:
-
     image: mysql:8.4
-
     container_name: mysql
-
     restart: unless-stopped
-
     environment:
-
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
       MYSQL_DATABASE: tasks
-
     ports:
-
       - "3306:3306"
-
     volumes:
-
       - mysql_data:/var/lib/mysql
-
     healthcheck:
-
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-
       interval: 10s
-
       timeout: 5s
-
       retries: 10
 
   backend:
-
     build: ./backend
-
     container_name: tasks-backend
-
     restart: unless-stopped
-
     depends_on:
-
       mysql:
-
         condition: service_healthy
-
     ports:
-
       - "3030:3030"
-
     environment:
-
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/tasks
-
       SPRING_DATASOURCE_USERNAME: root
-
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+    healthcheck:
+      # No actuator/health endpoint in this app (spring-boot-starter-actuator
+      # isn't a dependency) - a plain TCP check is enough to know Spring has
+      # finished booting and is accepting connections on 3030.
+      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/3030'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   frontend:
-
     build: ./frontend
-
     container_name: tasks-frontend
-
     restart: unless-stopped
-
     depends_on:
-
-      - backend
-
+      backend:
+        condition: service_healthy
     ports:
-
       - "80:80"
 
 volumes:
-
   mysql_data:
